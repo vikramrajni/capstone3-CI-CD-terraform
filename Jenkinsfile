@@ -42,8 +42,9 @@ pipeline {
       steps {
         script {
           dir('terraform') {
-            sh "terraform init"
-            sh "terraform apply --auto-approve"
+            //sh "terraform init"
+            //sh "terraform apply --auto-approve"
+            sh "terraform destroy --auto-approve"
             EC2_PUBLIC_IP = sh(
               script: "terraform output ec2-public_ip",
               returnStdout: true
