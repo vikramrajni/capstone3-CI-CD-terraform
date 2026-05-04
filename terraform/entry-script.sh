@@ -1,7 +1,12 @@
 #!/bin/bash
-sudo yum update -y && sudo yum install -y docker
-sudo systemctl start docker
-sudo usermod -aG docker ec2-user
+set -xe
+exec > /var/log/user-data-debug.log 2>&1
+dnf update -y
+dnf install -y docker
+systemctl enable docker
+systemctl start docker
+usermod -aG docker ec2-user
+
 
 # install docker-compose
 
