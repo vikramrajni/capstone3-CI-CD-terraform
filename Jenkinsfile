@@ -1,5 +1,12 @@
 #!/usr/bin/env groovy
 
+library identifier: 'jenkinsfile-sshagent@jenkinsfile-sshagent', retriever: modernSCM(
+  [$class: 'GitSCMSource',
+  remote: 'https://github.com/vikramrajni/terraform-cicd.git',
+  credentialsId: 'github-credentials'
+  ]
+)
+
 pipeline {   
   agent any
   tools { maven 'maven-3.9.11'}
@@ -11,8 +18,8 @@ pipeline {
       steps {
         script {
           echo 'building application jar...'
-          // buildJar()
-          sh 'mvn package'
+          buildJar()
+          // sh 'mvn package'
         }
       }
     }
