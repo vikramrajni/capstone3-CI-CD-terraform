@@ -1,14 +1,25 @@
-terraform {
-  required_version = ">= 0.12"
-  backend "s3" {
-    bucket = "myapp-vik-tf-s3-bucket"
-    key = "myapp/state.tfstate"
-    region = "us-east-1"
-  }
-}
-
 provider "aws" {
   region = "us-east-1"
+}
+
+
+data "aws_ami" "latest-amazon-linux-image" {
+  most_recent = true
+  owners = ["amazon"]
+  
+  filter {
+    name = "name"
+    values = ["al2023-ami-2023*-x86_64"]
+  }
+  
+  filter {
+    name = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+									 
+output "ec2-public_ip" {
+  value = aws_instance.myapp-server.public_ip
 }
 
 resource "aws_vpc" "myapp-vpc" {
@@ -28,27 +39,8 @@ resource "aws_subnet" "myapp-subnet-1" {
   }
 }
 
-resource "aws_internet_gateway" "myapp-igw" {
-  vpc_id = aws_vpc.myapp-vpc.id
-  tags = {
-    Name: "${var.env_prefix}-igw"
-  }
-}
-
-resource "aws_default_route_table" "main-rtb" {
-  default_route_table_id = aws_vpc.myapp-vpc.default_route_table_id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.myapp-igw.id
-  }
-  tags = {
-    Name: "${var.env_prefix}-main-rtb"
-  }
-}
-
-
-resource "aws_default_security_group" "default-sg" {
+resource "aws_security_group" "myapp-sg" {
+  name   = "myapp-sg"
   vpc_id = aws_vpc.myapp-vpc.id
 
   ingress {
@@ -72,48 +64,69 @@ resource "aws_default_security_group" "default-sg" {
     cidr_blocks = ["0.0.0.0/0"]
     prefix_list_ids = []
    }
-
+  
   tags = {
-    Name: "${var.env_prefix}-default-sg"
+    Name: "${var.env_prefix}-sg"
+  }													   
+}
+
+resource "aws_internet_gateway" "myapp-igw" {
+  vpc_id = aws_vpc.myapp-vpc.id
+  tags = {
+    Name: "${var.env_prefix}-internet-gateway"											 
   }
 }
 
-data "aws_ami" "latest-amazon-linux-image" {
-  most_recent = true
-  owners = ["amazon"]
-  filter {
-    name = "name"
-    values = ["al2023-ami-2023*-x86_64"]
-  }
-  filter {
-    name = "virtualization-type"
-    values = ["hvm"]
-  }
+
+resource "aws_route_table" "myapp-route-table" {
+   vpc_id = aws_vpc.myapp-vpc.id
+
+   route {
+     cidr_block = "0.0.0.0/0"
+     gateway_id = aws_internet_gateway.myapp-igw.id
+   }
+
+   # default route, mapping VPC CIDR block to "local", created implicitly and cannot be specified.
+
+   tags = {
+     Name = "${var.env_prefix}-route-table"
+   }
+ }
+
+# Associate subnet with Route Table
+resource "aws_route_table_association" "a-rtb-subnet" {
+  subnet_id      = aws_subnet.myapp-subnet-1.id
+  route_table_id = aws_route_table.myapp-route-table.id
 }
 
+resource "aws_key_pair" "ssh-key" {
+  key_name   = "myapp-key"
+  public_key = file(var.public_key_location)
+}
+
+output "server-ip" {
+    value = aws_instance.myapp-server.public_ip
+}
 
 resource "aws_instance" "myapp-server" {
-  ami = data.aws_ami.latest-amazon-linux-image.id
-  instance_type = var.instance_type
-  subnet_id = aws_subnet.myapp-subnet-1.id
-  // subnet_id = module.myapp-subnet.subnet.id
-  vpc_security_group_ids = [aws_default_security_group.default-sg.id]
-  availability_zone = var.avail_zone
-
+  ami                         = data.aws_ami.latest-amazon-linux-image.id
+  instance_type               = var.instance_type
+  key_name                    = "myapp-key"
   associate_public_ip_address = true
-  key_name = "myapp-key-pair"
-
-  user_data = file("entry-script.sh")
-  user_data_replace_on_change = true
+  subnet_id                   = aws_subnet.myapp-subnet-1.id
+  vpc_security_group_ids      = [aws_security_group.myapp-sg.id]
+  availability_zone			  = var.avail_zone
 
   tags = {
-    Name: "${var.env_prefix}-server"
+    Name = "${var.env_prefix}-server"
   }
+
+  user_data = file("entry-script.sh")
+  
+  user_data_replace_on_change = true
+
 }
 
-output "ec2-public_ip" {
-  value = aws_instance.myapp-server.public_ip
-}
 
 
 
