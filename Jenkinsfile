@@ -2,7 +2,7 @@
 
 library identifier: 'jenkinsfile-sshagent@jenkinsfile-sshagent', retriever: modernSCM(
   [$class: 'GitSCMSource',
-  remote: 'https://github.com/vikramrajni/terraform-cicd.git',
+  remote: 'https://github.com/vikramrajni/capstone3-CI-CD-terraform.git',
   credentialsId: 'github-credentials'
   ]
 )
@@ -33,6 +33,8 @@ pipeline {
         }
       }
     }
+	
+/*	
     stage("delete server") {
       environment {
         AWS_ACCESS_KEY_ID = credentials('jenkins_aws_access_key_ID')
@@ -53,8 +55,8 @@ pipeline {
         }
       }
     }
-
- /*   
+*/
+  
     stage("provision server") {
       environment {
         AWS_ACCESS_KEY_ID = credentials('jenkins_aws_access_key_ID')
@@ -74,7 +76,7 @@ pipeline {
         }
       }
     }
-*/
+
 
 
     stage("deploy") {

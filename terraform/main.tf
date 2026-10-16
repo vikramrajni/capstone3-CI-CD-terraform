@@ -1,3 +1,13 @@
+terraform {
+  required_version = ">= 0.12"
+  backend "s3" {
+    bucket = "myapp-vik-tf-s3-bucket"
+    key = "myapp/state.tfstate"
+    region = "us-east-1"
+  }
+}
+
+
 provider "aws" {
   region = "us-east-1"
 }
@@ -127,6 +137,9 @@ resource "aws_instance" "myapp-server" {
 
 }
 
+output "ec2-public_ip" {
+  value = aws_instance.myapp-server.public_ip
+}
 
 
 
